@@ -1,28 +1,48 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = "pipeline-app"
+        CONTAINER_NAME = "pipeline-container"
+        PORT = "3003"
+    }
+
     stages {
 
         stage('Clone Code') {
             steps {
-                echo "Code pulled from GitHub"
+                echo "Pulling latest code..."
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Image') {
             steps {
-                sh 'docker build -t pipeline-app .'
+                sh 'docker build -t $IMAGE_NAME:latest .'
             }
         }
 
-        stage('Run Container') {
+        stage('Stop Old Container') {
             steps {
                 sh '''
-                docker rm -f pipeline-container || true
-                docker run -d -p 3003:3000 --name pipeline-container pipeline-app
+                docker rm -f $CONTAINER_NAME || true
                 '''
             }
         }
 
+        stage('Run New Container') {
+            steps {
+                sh '''
+                docker run -d -p $PORT:3000 \
+                --name $CONTAINER_NAME \
+                $IMAGE_NAME:latest
+                '''
+            }
+        }
+
+        stage('Verify') {
+            steps {
+                sh 'docker ps'
+            }
+        }
     }
 }
