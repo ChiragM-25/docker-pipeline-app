@@ -2,9 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "pipeline-app"
-        CONTAINER_NAME = "pipeline-container"
-        PORT = "3003"
+        COMPOSE_PROJECT_NAME = "pipeline-app"
     }
 
     stages {
@@ -15,33 +13,21 @@ pipeline {
             }
         }
 
-        stage('Build Image') {
+        stage('Stop Existing Containers') {
             steps {
-                sh 'docker build -t $IMAGE_NAME:latest .'
+                sh 'docker compose down || true'
             }
         }
 
-        stage('Stop Old Container') {
+        stage('Build & Start Full App') {
             steps {
-                sh '''
-                docker rm -f $CONTAINER_NAME || true
-                '''
-            }
-        }
-
-        stage('Run New Container') {
-            steps {
-                sh '''
-                docker run -d -p $PORT:3000 \
-                --name $CONTAINER_NAME \
-                $IMAGE_NAME:latest
-                '''
+                sh 'docker compose up --build -d'
             }
         }
 
         stage('Verify') {
             steps {
-                sh 'docker ps'
+                sh 'docker compose ps'
             }
         }
     }
