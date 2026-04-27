@@ -7,28 +7,52 @@ pipeline {
 
     stages {
 
-        stage('Clone Code') {
+        stage('Checkout') {
             steps {
-                echo "Pulling latest code..."
+                checkout scm
             }
         }
 
-        stage('Stop Existing Containers') {
+        stage('Pre-Cleanup (Global)') {
             steps {
-                sh 'docker compose down || true'
+                sh '''
+                echo "Cleaning old standalone containers (if any)..."
+                docker rm -f pipeline-container || true
+
+                echo "Bringing down any existing compose stack..."
+                docker compose down --remove-orphans || true
+                '''
             }
         }
 
-        stage('Build & Start Full App') {
+        stage('Build & Deploy (Compose)') {
             steps {
-                sh 'docker compose up --build -d'
+                sh '''
+                docker compose up --build -d
+                '''
             }
         }
 
         stage('Verify') {
             steps {
-                sh 'docker compose ps'
+                sh '''
+                echo "Running containers:"
+                docker compose ps
+
+                echo "Health check (app):"
+                sleep 5
+                curl -s http://localhost:3004 || true
+                '''
             }
+        }
+    }
+
+    post {
+        failure {
+            sh '''
+            echo "Pipeline failed. Collecting logs..."
+            docker compose logs --no-color || true
+            '''
         }
     }
 }
