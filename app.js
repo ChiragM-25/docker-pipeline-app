@@ -8,9 +8,16 @@ const client = new Client({
   database: 'postgres'
 });
 
-client.connect()
-  .then(() => console.log("Connected to DB ✅"))
-  .catch(err => console.error("DB connection error ❌", err));
+const connectWithRetry = () => {
+  client.connect()
+    .then(() => console.log("Connected to DB ✅"))
+    .catch(err => {
+      console.log("DB not ready, retrying...");
+      setTimeout(connectWithRetry, 3000);
+    });
+};
+
+connectWithRetry();
 
 const server = http.createServer((req, res) => {
   res.end("App + DB Running 🚀");
